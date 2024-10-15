@@ -20,6 +20,7 @@ model:
   mamba_expand: 2
   clip_path: "openai/clip-vit-base-patch32"
   dwpose_path: "IDEA-Research/DWPose"
+  caption_model_path: "THUDM/cogvlm2-llama3-caption"
 
 training:
   learning_rate: 1e-4
