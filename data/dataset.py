@@ -5,7 +5,7 @@ import numpy as np
 import os
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-from transformers import CLIPTokenizer
+from transformers import CLIPTokenizer, AutoFeatureExtractor, AutoModel
 
 class AnimateXDataset(Dataset):
     """
@@ -32,9 +32,11 @@ class AnimateXDataset(Dataset):
         self.config = config
         self.transform = transform or self._default_transform()
         self.use_cache = use_cache
-        self.tokenizer = CLIPTokenizer.from_pretrained(config['model']['clip_path'])
+        self.tokenizer = CLIPTokenizer.from_pretrained(config['clip_path'])
         self.samples = self._load_samples()
         self.cache = {}
+        self.dwpose_extractor = AutoFeatureExtractor.from_pretrained(config['model']['dwpose_path'])
+        self.dwpose_model = AutoModel.from_pretrained(config['model']['dwpose_path'])
     
     def _load_samples(self):
         """
@@ -81,14 +83,10 @@ class AnimateXDataset(Dataset):
                 - pose_sequence (torch.Tensor): The pose sequence.
                 - text_prompt (str): The text prompt.
         """
-        reference_image_path, driving_video_path, pose_sequence_path, text_prompt = self.samples[idx]
+        video_path = self.samples[idx]
         
-        # Load reference image
-        reference_image = cv2.imread(reference_image_path)
-        reference_image = cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB)
-        
-        # Load driving video
-        cap = cv2.VideoCapture(driving_video_path)
+        # Load video
+        cap = cv2.VideoCapture(video_path)
         frames = []
         while True:
             ret, frame = cap.read()
@@ -98,8 +96,17 @@ class AnimateXDataset(Dataset):
             frames.append(frame)
         cap.release()
         
-        # Load pose sequence
-        pose_sequence = np.load(pose_sequence_path)
+        # Use first frame as reference image
+        reference_image = frames[0]
+        
+        # Extract pose sequence using DWPose
+        inputs = self.dwpose_extractor(images=frames, return_tensors="pt")
+        with torch.no_grad():
+            outputs = self.dwpose_model(**inputs)
+        pose_sequence = outputs.last_hidden_state.squeeze(0).numpy()
+        
+        # Generate or load text prompt (you'll need to implement this part)
+        text_prompt = self._generate_text_prompt(video_path)
         
         # Apply transformations
         if self.transform:

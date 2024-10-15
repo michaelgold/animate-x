@@ -19,6 +19,7 @@ model:
   mamba_conv_dim: 4
   mamba_expand: 2
   clip_path: "openai/clip-vit-base-patch32"
+  dwpose_path: "IDEA-Research/DWPose"
 
 training:
   learning_rate: 1e-4
