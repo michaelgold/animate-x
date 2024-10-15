@@ -4,8 +4,23 @@ import cv2
 import numpy as np
 import os
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
 from transformers import CLIPTokenizer, AutoFeatureExtractor, AutoModel
+from dataclasses import dataclass
+from typing import List, Tuple, Optional, Callable
+
+@dataclass
+class Sample:
+    reference_image: str
+    driving_video: str
+    pose_sequence: str
+    text_prompt: str
+
+@dataclass
+class AnimateXSample:
+    reference_image: torch.Tensor
+    driving_video: torch.Tensor
+    pose_sequence: torch.Tensor
+    text_prompt: str
 
 class AnimateXDataset(Dataset):
     """
@@ -16,7 +31,7 @@ class AnimateXDataset(Dataset):
     and text prompts.
     """
 
-    def __init__(self, data_dir, config, transform=None, use_cache=True):
+    def __init__(self, data_dir: str, config: dict, transform: Optional[Callable] = None, use_cache: bool = True):
         """
         Initialize the AnimateXDataset.
         
@@ -28,17 +43,20 @@ class AnimateXDataset(Dataset):
             use_cache (bool, optional): Whether to use caching for faster data loading.
                 Defaults to True.
         """
-        self.data_dir = data_dir
-        self.config = config
-        self.transform = transform or self._default_transform()
-        self.use_cache = use_cache
-        self.tokenizer = CLIPTokenizer.from_pretrained(config['clip_path'])
-        self.samples = self._load_samples()
-        self.cache = {}
-        self.dwpose_extractor = AutoFeatureExtractor.from_pretrained(config['model']['dwpose_path'])
-        self.dwpose_model = AutoModel.from_pretrained(config['model']['dwpose_path'])
+        self.data_dir: str = data_dir
+        self.config: dict = config
+        self.transform: Callable = transform or self._default_transform()
+        self.use_cache: bool = use_cache
+        self.tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(config['clip_path'])
+        self.samples: List[Tuple[str, str, str, str]] = self._load_samples()
+        self.cache: dict = {}
+        self.dwpose_extractor: AutoFeatureExtractor = AutoFeatureExtractor.from_pretrained(config['model']['dwpose_path'])
+        self.dwpose_model: AutoModel = AutoModel.from_pretrained(config['model']['dwpose_path'])
     
-    def _load_samples(self):
+    def _default_transform(self) -> Callable:
+        raise NotImplementedError("_default_transform method is not implemented")
+    
+    def _load_samples(self) -> List[Tuple[str, str, str, str]]:
         """
         Load all valid samples from the data directory.
 
@@ -60,7 +78,7 @@ class AnimateXDataset(Dataset):
                     samples.append((reference_image, driving_video, pose_sequence, prompt))
         return samples
     
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Get the total number of samples in the dataset.
 
@@ -69,7 +87,7 @@ class AnimateXDataset(Dataset):
         """
         return len(self.samples)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> AnimateXSample:
         """
         Get a single sample from the dataset.
 
@@ -105,7 +123,7 @@ class AnimateXDataset(Dataset):
             outputs = self.dwpose_model(**inputs)
         pose_sequence = outputs.last_hidden_state.squeeze(0).numpy()
         
-        # Generate or load text prompt (you'll need to implement this part)
+        # Generate or load text prompt
         text_prompt = self._generate_text_prompt(video_path)
         
         # Apply transformations
@@ -118,4 +136,7 @@ class AnimateXDataset(Dataset):
         driving_video = torch.stack([torch.from_numpy(frame).permute(2, 0, 1).float() for frame in frames])
         pose_sequence = torch.from_numpy(pose_sequence).float()
         
-        return reference_image, driving_video, pose_sequence, text_prompt
+        return AnimateXSample(reference_image, driving_video, pose_sequence, text_prompt)
+
+    def _generate_text_prompt(self, video_path: str) -> str:
+        raise NotImplementedError("_generate_text_prompt method is not implemented")
