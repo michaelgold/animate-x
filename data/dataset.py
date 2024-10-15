@@ -48,20 +48,25 @@ class AnimateXDataset(Dataset):
         self.transform: Callable = transform or self._default_transform()
         self.use_cache: bool = use_cache
         self.tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(config['clip_path'])
-        self.samples: List[Tuple[str, str, str, str]] = self._load_samples()
+        self.samples: List[Sample] = self._load_samples()
         self.cache: dict = {}
         self.dwpose_extractor: AutoFeatureExtractor = AutoFeatureExtractor.from_pretrained(config['model']['dwpose_path'])
         self.dwpose_model: AutoModel = AutoModel.from_pretrained(config['model']['dwpose_path'])
     
     def _default_transform(self) -> Callable:
-        raise NotImplementedError("_default_transform method is not implemented")
+        return A.Compose([
+            A.Resize(256, 256),
+            A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            A.ToFloat(max_value=255),
+        ])
     
-    def _load_samples(self) -> List[Tuple[str, str, str, str]]:
+    def _load_samples(self) -> List[Sample]:
         """
         Load all valid samples from the data directory.
 
         Returns:
-            list: A list of tuples, each containing paths to the reference image,
+            list: A list of Samples, each containing paths to the 
+            reference image,
                   driving video, pose sequence, and the text prompt.
         """
         samples = []
@@ -75,7 +80,7 @@ class AnimateXDataset(Dataset):
                 if all(os.path.exists(f) for f in [reference_image, driving_video, pose_sequence, text_prompt]):
                     with open(text_prompt, 'r') as f:
                         prompt = f.read().strip()
-                    samples.append((reference_image, driving_video, pose_sequence, prompt))
+                    samples.append(Sample(reference_image, driving_video, pose_sequence, prompt))
         return samples
     
     def __len__(self) -> int:
@@ -139,4 +144,9 @@ class AnimateXDataset(Dataset):
         return AnimateXSample(reference_image, driving_video, pose_sequence, text_prompt)
 
     def _generate_text_prompt(self, video_path: str) -> str:
-        raise NotImplementedError("_generate_text_prompt method is not implemented")
+        prompt_path = video_path.replace('driving.mp4', 'prompt.txt')
+        if os.path.exists(prompt_path):
+            with open(prompt_path, 'r') as f:
+                return f.read().strip()
+        else:
+            return "A person performing an action"
