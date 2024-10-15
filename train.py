@@ -15,10 +15,9 @@ def validate_config(config):
             raise ValueError(f"Missing required key '{key}' in config file")
 
 def main():
-    # Load and validate configuration
+    # Load configuration
     with open('config/config.yaml', 'r') as f:
         config = yaml.safe_load(f)
-    validate_config(config)
     
     # Create datasets and data loaders
     train_dataset = AnimateXDataset(config['data']['data_dir'], split='train')
@@ -55,22 +54,11 @@ def main():
     
     lr_monitor = LearningRateMonitor(logging_interval='step')
     
-    # Add learning rate scheduler
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer,
-        mode='min',
-        factor=config['training']['lr_factor'],
-        patience=config['training']['lr_patience'],
-        verbose=True
-    )
-    
-    lr_scheduler_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
-    
     # Create trainer
     trainer = pl.Trainer(
         max_epochs=config['training']['max_epochs'],
         logger=logger,
-        callbacks=[checkpoint_callback, lr_monitor, lr_scheduler_callback],
+        callbacks=[checkpoint_callback, lr_monitor, pl.callbacks.LearningRateMonitor(logging_interval='epoch')],
         gpus=1 if torch.cuda.is_available() else 0,
         gradient_clip_val=config['training']['clip_grad_norm']
     )
