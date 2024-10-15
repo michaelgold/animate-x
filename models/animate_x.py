@@ -59,15 +59,21 @@ class AnimateX(pl.LightningModule):
         return mamba_output, clip_features
     
     def forward(self, source_image, driving_video, text_prompt, pose_sequence):
-        source_latent = self.vae.encode(source_image).latent_dist.sample()
+        assert source_image.shape[1:] == (3, 256, 256), f"Expected source_image shape (3, 256, 256), got {source_image.shape[1:]}"
+        assert driving_video.shape[2:] == (3, 256, 256), f"Expected driving_video shape (B, T, 3, 256, 256), got {driving_video.shape[2:]}"
+        assert pose_sequence.shape[-1] == self.config['pose_dim'], f"Expected pose_sequence dim {self.config['pose_dim']}, got {pose_sequence.shape[-1]}"
         
+        source_latent = self.vae.encode(source_image).latent_dist.sample()
         driving_features, clip_features = self._process_driving_video(driving_video)
         
+        # Generate implicit pose information
         implicit_pose_info = self.ipi(clip_features, pose_sequence)
         explicit_pose_info = self.epi(pose_sequence)
         
+        # Combine pose information
         pose_info = torch.cat([implicit_pose_info, explicit_pose_info], dim=-1)
         
+        # Encode the text prompt
         text_embeddings = self._encode_text(text_prompt)
         
         latent_model_input = torch.cat([source_latent.repeat(driving_features.shape[1], 1, 1, 1), pose_info, driving_features], dim=1)
