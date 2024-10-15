@@ -167,3 +167,8 @@ class AnimateX(pl.LightningModule):
         self.log('val_fid', fid_score)
         self.log('val_ssim', ssim_score)
         self.log('val_lpips', lpips_score)
+        
+        # Reset metrics for next epoch
+        self.fid.reset()
+        self.ssim.reset()
+        self.lpips.reset()
