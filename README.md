@@ -96,4 +96,4 @@ This is an unofficial implementation based on publicly available information abo
 
 ## License
 
-[Specify your chosen license here]
+Apache2
