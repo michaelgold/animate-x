@@ -18,6 +18,7 @@ model:
   mamba_state_dim: 16
   mamba_conv_dim: 4
   mamba_expand: 2
+  clip_path: "openai/clip-vit-base-patch32"
 
 training:
   learning_rate: 1e-4

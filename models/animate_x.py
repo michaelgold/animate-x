@@ -29,9 +29,9 @@ class AnimateX(pl.LightningModule):
         self.unet = UNet2DConditionModel.from_pretrained(config['unet_path'])
         
         # Initialize CLIP for text and image conditioning
-        self.text_encoder = CLIPTextModel.from_pretrained(config['clip_path'])
-        self.vision_encoder = CLIPVisionModel.from_pretrained(config['clip_path'])
-        self.tokenizer = CLIPTokenizer.from_pretrained(config['clip_path'])
+        self.text_encoder = CLIPTextModel.from_pretrained(config['model']['clip_path'])
+        self.vision_encoder = CLIPVisionModel.from_pretrained(config['model']['clip_path'])
+        self.tokenizer = CLIPTokenizer.from_pretrained(config['model']['clip_path'])
         
         # Initialize Mamba for temporal modeling
         self.mamba = Mamba(

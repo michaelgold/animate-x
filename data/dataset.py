@@ -5,6 +5,7 @@ import numpy as np
 import os
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+from transformers import CLIPTokenizer
 
 class AnimateXDataset(Dataset):
     """
@@ -15,24 +16,25 @@ class AnimateXDataset(Dataset):
     and text prompts.
     """
 
-    def __init__(self, data_dir, transform=None):
+    def __init__(self, data_dir, config, transform=None, use_cache=True):
         """
         Initialize the AnimateXDataset.
-
+        
         Args:
             data_dir (str): Path to the directory containing the dataset.
+            config (dict): Configuration dictionary containing necessary parameters.
             transform (callable, optional): A function/transform to apply to the image data.
                 If None, a default transform is applied.
+            use_cache (bool, optional): Whether to use caching for faster data loading.
+                Defaults to True.
         """
         self.data_dir = data_dir
-        self.transform = transform or A.Compose([
-            A.Resize(256, 256),
-            A.HorizontalFlip(p=0.5),
-            A.RandomBrightnessContrast(p=0.2),
-            A.Normalize(),
-            ToTensorV2()
-        ])
+        self.config = config
+        self.transform = transform or self._default_transform()
+        self.use_cache = use_cache
+        self.tokenizer = CLIPTokenizer.from_pretrained(config['model']['clip_path'])
         self.samples = self._load_samples()
+        self.cache = {}
     
     def _load_samples(self):
         """
