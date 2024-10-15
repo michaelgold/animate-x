@@ -26,15 +26,18 @@ class AnimateXDataset(Dataset):
                 reference_image = os.path.join(sample_path, 'reference.png')
                 driving_video = os.path.join(sample_path, 'driving.mp4')
                 pose_sequence = os.path.join(sample_path, 'pose.npy')
-                if os.path.exists(reference_image) and os.path.exists(driving_video) and os.path.exists(pose_sequence):
-                    samples.append((reference_image, driving_video, pose_sequence))
+                text_prompt = os.path.join(sample_path, 'prompt.txt')
+                if all(os.path.exists(f) for f in [reference_image, driving_video, pose_sequence, text_prompt]):
+                    with open(text_prompt, 'r') as f:
+                        prompt = f.read().strip()
+                    samples.append((reference_image, driving_video, pose_sequence, prompt))
         return samples
     
     def __len__(self):
         return len(self.samples)
     
     def __getitem__(self, idx):
-        reference_image_path, driving_video_path, pose_sequence_path = self.samples[idx]
+        reference_image_path, driving_video_path, pose_sequence_path, text_prompt = self.samples[idx]
         
         # Load reference image
         reference_image = cv2.imread(reference_image_path)
@@ -64,4 +67,4 @@ class AnimateXDataset(Dataset):
         driving_video = torch.stack([torch.from_numpy(frame).permute(2, 0, 1).float() for frame in frames])
         pose_sequence = torch.from_numpy(pose_sequence).float()
         
-        return reference_image, driving_video, pose_sequence
+        return reference_image, driving_video, pose_sequence, text_prompt
